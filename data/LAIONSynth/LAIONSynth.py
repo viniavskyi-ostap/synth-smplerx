@@ -161,14 +161,15 @@ def build_avatar(
 
 
 class LAIONSynth(Dataset):
-    def __init__(self, transform, data_split='train'):
+    def __init__(self, transform, data_split='train', use_markers=False):
         super().__init__()
-        images_path = '/mnt/vol_f/control-human-gen-v2/laion-faces/generations/densepose_gen_l32_shape_resampled/'
-        # images_path = '/mnt/vol_f/control-human-gen-v2/laion-faces/generations/densepose_gen_h32/'
-        labels_path = '/mnt/vol_f/control-human-gen-v2/laion-faces/smplerx-pred-v3-dp/'
-        # labels_path = '/mnt/vol_f/control-human-gen-v2/laion-faces/smplerx-pred-h32/'
+        images_path = '/mnt/vol_e/datasets/LAIONFacesAnnot/image-crops'
+        labels_path = '/mnt/vol_e/datasets/LAIONFacesAnnot/smplx-gt-labels-smplerx'
+        dp_path = '/mnt/vol_e/datasets/LAIONFacesAnnot/densepose-renders-smplerx'
+
         self.images_path = images_path
         self.labels_path = labels_path
+        self.dp_path = dp_path
         self.data_split = data_split
 
         self.labels_files_list = glob.glob(os.path.join(labels_path, '*/laion_face/*/*.h5'))
@@ -180,7 +181,7 @@ class LAIONSynth(Dataset):
                 new_labels_files_list.append(label_path)
         self.labels_files_list = new_labels_files_list
 
-        self.use_markers = True
+        self.use_markers = use_markers
         self.markers_flip_pairs = (
             (0, 1), (2, 3), (4, 5), (6, 7), (8, 9), (10, 11), (12, 13), (14, 15), (16, 17), (18, 19),
             (20, 21), (22, 23), (24, 25), (26, 27), (28, 29), (30, 31), (32, 33), (34, 35), (36, 37),
@@ -209,10 +210,17 @@ class LAIONSynth(Dataset):
     def __getitem__(self, idx):
         label_path = self.labels_files_list[idx]
         image_path = label_path.replace(self.labels_path, self.images_path).replace('.h5', '.jpg')
+        densepose_path = label_path.replace(self.labels_path, self.dp_path).replace('.h5', '.png')
 
         img_orig = cv2.imread(image_path)[..., ::-1].copy()
-        img_shape = img_orig.shape[:2]
         avatar_meta = dd.io.load(label_path)
+        densepose = cv2.imread(densepose_path, cv2.IMREAD_GRAYSCALE)
+
+        # remove padding added for generation
+        pad_l, pad_t, pad_r, pad_b = avatar_meta['pad'].astype(np.int64)
+        densepose = densepose[pad_t:densepose.shape[0] - pad_b, pad_l:densepose.shape[1] - pad_r]
+        avatar_meta['bbox'] -= np.array([pad_l, pad_t, pad_l, pad_t], dtype=np.float32)
+        avatar_meta['princpt'] -= np.array([pad_l, pad_t], dtype=np.float32)
 
         # get bbox transform and augmentations
         bbox = avatar_meta['bbox']
@@ -226,7 +234,7 @@ class LAIONSynth(Dataset):
         lhand_pose = avatar_meta['left_hand_pose']
         rhand_pose = avatar_meta['right_hand_pose']
         jaw_pose = avatar_meta['jaw_pose']
-        shape = avatar_meta['betas_shape_resampled']
+        shape = avatar_meta['betas']
         expr = avatar_meta['expression']
         transl = avatar_meta['transl']  # translation to world coordinate
 
@@ -239,12 +247,12 @@ class LAIONSynth(Dataset):
             transl, focal, princpt, R_aug, S_aug, do_flip, use_markers=self.use_markers)
 
         # build bounding boxes for hands and face
-        densepose = cv2.imdecode(avatar_meta['smplx_densepose_shape_resampled'], cv2.IMREAD_GRAYSCALE)
         densepose = cv2.warpAffine(densepose, img2bb_trans, cfg.input_img_shape[::-1], flags=cv2.INTER_NEAREST)
 
-        lhand_bbox = build_face_hand_bbox(densepose == 3, joint_img_orig[smpl_x.joint_part['lhand'], :])
-        rhand_bbox = build_face_hand_bbox(densepose == 2, joint_img_orig[smpl_x.joint_part['rhand'], :])
-        face_bbox = build_face_hand_bbox(densepose == 14, joint_img_orig[smpl_x.joint_part['face'], :])
+        lhand_bbox = build_face_hand_bbox(densepose == 4, joint_img_orig[smpl_x.joint_part['lhand'], :])
+        rhand_bbox = build_face_hand_bbox(densepose == 3, joint_img_orig[smpl_x.joint_part['rhand'], :])
+        face_bbox = build_face_hand_bbox(
+            np.isin(densepose, [23, 24]), joint_img_orig[smpl_x.joint_part['face'], :])
 
         lhand_bbox, lhand_bbox_valid = self.process_hand_face_bbox(lhand_bbox)
         rhand_bbox, rhand_bbox_valid = self.process_hand_face_bbox(rhand_bbox)

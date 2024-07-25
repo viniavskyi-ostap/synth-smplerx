@@ -33,7 +33,7 @@ use_cache = True
 data_strategy = 'concat' # 'balance' need to define total_data_len
 
 # model
-smplx_loss_weight = 3.0 #2 for agora_model for smplx shape
+smplx_loss_weight = 2.0 #2 for agora_model for smplx shape
 smplx_pose_weight = 10.0
 
 smplx_kps_3d_weight = 100.0
