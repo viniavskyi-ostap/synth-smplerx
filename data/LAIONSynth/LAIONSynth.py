@@ -163,9 +163,9 @@ def build_avatar(
 class LAIONSynth(Dataset):
     def __init__(self, transform, data_split='train', use_markers=False):
         super().__init__()
-        images_path = '/mnt/vol_e/datasets/LAIONFacesAnnot/image-crops'
-        labels_path = '/mnt/vol_e/datasets/LAIONFacesAnnot/smplx-gt-labels-smplerx'
-        dp_path = '/mnt/vol_e/datasets/LAIONFacesAnnot/densepose-renders-smplerx'
+        images_path = '/mnt/vol_c/projects/synth-smplerx/synth-data/data'
+        labels_path = '/mnt/vol_c/projects/synth-smplerx/synth-data/labels'
+        dp_path = '/mnt/vol_c/projects/synth-smplerx/synth-data/dp'
 
         self.images_path = images_path
         self.labels_path = labels_path
@@ -215,12 +215,14 @@ class LAIONSynth(Dataset):
         img_orig = cv2.imread(image_path)[..., ::-1].copy()
         avatar_meta = dd.io.load(label_path)
         densepose = cv2.imread(densepose_path, cv2.IMREAD_GRAYSCALE)
+        img_orig = cv2.resize(
+            img_orig, (densepose.shape[1], densepose.shape[0]), interpolation=cv2.INTER_LANCZOS4)
 
-        # remove padding added for generation
-        pad_l, pad_t, pad_r, pad_b = avatar_meta['pad'].astype(np.int64)
-        densepose = densepose[pad_t:densepose.shape[0] - pad_b, pad_l:densepose.shape[1] - pad_r]
-        avatar_meta['bbox'] -= np.array([pad_l, pad_t, pad_l, pad_t], dtype=np.float32)
-        avatar_meta['princpt'] -= np.array([pad_l, pad_t], dtype=np.float32)
+        # # remove padding added for generation
+        # pad_l, pad_t, pad_r, pad_b = avatar_meta['pad'].astype(np.int64)
+        # densepose = densepose[pad_t:densepose.shape[0] - pad_b, pad_l:densepose.shape[1] - pad_r]
+        # avatar_meta['bbox'] -= np.array([pad_l, pad_t, pad_l, pad_t], dtype=np.float32)
+        # avatar_meta['princpt'] -= np.array([pad_l, pad_t], dtype=np.float32)
 
         # get bbox transform and augmentations
         bbox = avatar_meta['bbox']
