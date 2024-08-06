@@ -152,10 +152,10 @@ def generate_patch_image_preserve_aspect_ratio(cvimg, bbox, scale, rot, do_flip,
     bb_c_x = float(bbox[0] + 0.5 * bb_width)
     bb_c_y = float(bbox[1] + 0.5 * bb_height)
 
-    if bb_width / bb_height > out_shape[0] / out_shape[1]:
-        bb_height = out_shape[1] / out_shape[0] * bb_width
+    if bb_width / bb_height > out_shape[1] / out_shape[0]:
+        bb_height = out_shape[0] / out_shape[1] * bb_width
     else:
-        bb_width = out_shape[0] / out_shape[1] * bb_height
+        bb_width = out_shape[1] / out_shape[0] * bb_height
 
     if do_flip:
         img = img[:, ::-1, :]
