@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torchvision.transforms as transforms
 
-SMPLERX_ROOT = '/mnt/vol_d/projects/SMPLer-X'
+SMPLERX_ROOT = '/mnt/vol_c/projects/synth-smplerx'
 sys.path.insert(0, osp.join(SMPLERX_ROOT, 'main'))
 sys.path.insert(0, osp.join(SMPLERX_ROOT, 'data'))
 sys.path.insert(0, osp.join(SMPLERX_ROOT, 'common'))
@@ -20,8 +20,8 @@ from typing import Optional
 from mmdet.apis import init_detector, inference_detector
 from utils.inference_utils import process_mmdet_results
 
-config_path = f'{SMPLERX_ROOT}/main/config/config_smpler_x_s_synth_markers.py'
-ckpt_path = f'{SMPLERX_ROOT}/synth_small_shape_resampled_markers_cam_static_w10/model_dump/snapshot_9.pth.tar'
+config_path = f'{SMPLERX_ROOT}/main/config/config_smpler_x_s_synth.py'
+ckpt_path = f'{SMPLERX_ROOT}/smplerx_1_5M/snapshot_9.pth.tar'
 # ckpt_path = '../../synth_small_20240415_121041/model_dump/snapshot_9.pth.tar'
 
 cfg.get_config_fromfile(config_path)
@@ -38,8 +38,7 @@ from eval.ssp3d import SSP3DDataset
 from eval.ubody import UBodyDataset
 
 
-def make_pred(image, bbox_xywh: Optional[np.array] = None,
-              preserve_aspect_ratio: bool = False, bbox_scale: float = 1.2):
+def make_pred(image, bbox_xywh: Optional[np.array] = None, bbox_scale: float = 1.2):
     original_img_height, original_img_width = image.shape[:2]
     transform = transforms.ToTensor()
 
@@ -57,11 +56,10 @@ def make_pred(image, bbox_xywh: Optional[np.array] = None,
     else:
         mmdet_box_xywh = bbox_xywh
 
-    bbox = process_bbox(mmdet_box_xywh, original_img_width, original_img_height, bbox_scale)
-    if preserve_aspect_ratio:
-        img, *_ = generate_patch_image_preserve_aspect_ratio(image, bbox, 1.0, 0.0, False, cfg.input_img_shape)
-    else:
-        img, *_ = generate_patch_image(image, bbox, 1.0, 0.0, False, cfg.input_img_shape)
+    # bbox = process_bbox(mmdet_box_xywh, original_img_width, original_img_height, bbox_scale)
+    bbox = mmdet_box_xywh
+    bbox = process_bbox(bbox, original_img_width, original_img_height, ratio=bbox_scale)
+    img, *_ = generate_patch_image(image, bbox, 1.0, 0.0, False, cfg.input_img_shape)
 
     img = transform(img.astype(np.float32)) / 255.
     img = img.cuda()[None, :, :, :]
@@ -102,30 +100,30 @@ if __name__ == '__main__':
     parser.add_argument("--dataset", choices=["ehf", "egobody", "ssp3d", "ubody"])
     parser.add_argument("--experiment_tag", type=str)
     parser.add_argument("--device", default="cuda:0", type=str)
-    parser.add_argument("--preserve_aspect_ratio", action="store_true")
+    parser.add_argument("--bbox_scale", default=1.1, type=float)
 
 
     args = parser.parse_args()
 
     if args.dataset == "ehf":
         dataset = EHFDataset(
-            data_path='/mnt/vol_f/smplify_cse/ehf',
-            smplx_model_path='/mnt/vol_d/projects/SMPLer-X/common/utils/human_model_files/smplx/',
+            data_path='/mnt/vol_d/datasets/EHF',
+            smplx_model_path='/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smplx/',
         )
     elif args.dataset == "egobody":
         dataset = EgoBodyDataset(
-            data_path='/mnt/vol_f/datasets/EgoBody',
-            smpl_model_path='/mnt/vol_d/projects/SMPLer-X/common/utils/human_model_files/smpl/',
+            data_path='/mnt/vol_d/datasets/EgoBody',
+            smpl_model_path='/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smpl/',
         )
     elif args.dataset == "ssp3d":
         dataset = SSP3DDataset(
             data_path='/mnt/vol_f/smplify_cse/ssp3d/',
-            smpl_model_path='/mnt/vol_d/projects/SMPLer-X/common/utils/human_model_files/smpl/',
+            smpl_model_path='/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smpl/',
         )
     elif args.dataset == "ubody":
         dataset = UBodyDataset(
-            data_path="/mnt/vol_f/datasets",
-            smplx_model_path="/mnt/vol_c/projects/smplx-estimation-bh/weights/smplx",
+            data_path="/mnt/vol_d/datasets",
+            smplx_model_path="/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smplx/",
         )
     else:
         raise ValueError
@@ -150,7 +148,7 @@ if __name__ == '__main__':
         else:
             image, *_ = instance
             bbox = None
-        output = make_pred(image, bbox, preserve_aspect_ratio=args.preserve_aspect_ratio)
+        output = make_pred(image, bbox, bbox_scale=args.bbox_scale)
 
         save_path = os.path.join(output_path, f'{i}.h5')
         dd.io.save(save_path, output)

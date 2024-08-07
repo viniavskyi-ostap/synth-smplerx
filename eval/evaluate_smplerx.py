@@ -55,26 +55,26 @@ if __name__ == "__main__":
     zero_pred_pose = False
     if args.dataset == "ehf":
         dataset = EHFDataset(
-            data_path='/mnt/vol_f/smplify_cse/ehf',
-            smplx_model_path='/mnt/vol_d/projects/SMPLer-X/common/utils/human_model_files/smplx/',
+            data_path='/mnt/vol_d/datasets/EHF',
+            smplx_model_path='/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smplx/',
             return_vertices=True
         )
     elif args.dataset == "egobody":
         dataset = EgoBodyDataset(
-            data_path='/mnt/vol_f/datasets/EgoBody',
-            smpl_model_path='/mnt/vol_d/projects/SMPLer-X/common/utils/human_model_files/smpl/',
+            data_path='/mnt/vol_d/datasets/EgoBody',
+            smpl_model_path='/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smpl/',
             return_vertices=True
         )
     elif args.dataset == "ssp3d":
         dataset = SSP3DDataset(
             data_path='/mnt/vol_f/smplify_cse/ssp3d/',
-            smpl_model_path='/mnt/vol_d/projects/SMPLer-X/common/utils/human_model_files/smpl/',
+            smpl_model_path='/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smpl/',
             return_vertices=True
         )
     elif args.dataset == "ssp3d_shape":
         dataset = SSP3DDataset(
             data_path='/mnt/vol_f/smplify_cse/ssp3d/',
-            smpl_model_path='/mnt/vol_d/projects/SMPLer-X/common/utils/human_model_files/smpl/',
+            smpl_model_path='/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smpl/',
             return_vertices=True,
             zero_pose=True
         )
@@ -82,16 +82,16 @@ if __name__ == "__main__":
         args.dataset = "ssp3d"
     elif args.dataset == "ubody":
         dataset = UBodyDataset(
-            data_path="/mnt/vol_f/datasets",
-            smplx_model_path="/mnt/vol_c/projects/smplx-estimation-bh/weights/smplx",
+            data_path="/mnt/vol_d/datasets",
+            smplx_model_path="/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smplx/",
             return_vertices=True,
         )
     else:
         raise ValueError
 
     device = args.device
-    smplx_model_path = '/mnt/vol_d/projects/SMPLer-X/common/utils/human_model_files/smplx/'
-    smpl_model_path = '/mnt/vol_d/projects/SMPLer-X/common/utils/human_model_files/smpl/'
+    smplx_model_path = '/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smplx/'
+    smpl_model_path = '/mnt/vol_c/projects/synth-smplerx/common/utils/human_model_files/smpl/'
 
     smplx_neutral = smplx.create(
         os.path.join(smplx_model_path, 'SMPLX_NEUTRAL.npz'),
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         model_type='smpl', gender='neutral', num_betas=10,
     ).to(device)
 
-    deformation_transfer = dd.io.load('/mnt/vol_d/projects/SMPLer-X/smplx2smpl_sparse.h5')
+    deformation_transfer = dd.io.load('/mnt/vol_c/projects/synth-body/weights/smplx/smplx2smpl_sparse.h5')
     deformation_transfer = {k: torch.from_numpy(v).to(device) for k, v in deformation_transfer.items()}
 
     predictions_path = f"prediction/{args.dataset}/{args.experiment_tag}"
